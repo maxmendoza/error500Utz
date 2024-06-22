@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  utez
+  Sample SAM Template for utez
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+
+Resources:
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: LambdaBasicExecution
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - secretsmanager:GetSecretValue
+                Resource: arn:aws:logs:*:*:*
+
+  ClassApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: ClassApi
+      StageName: Prod
+
+  GetDataClassByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: get_class_by_id/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Architectures:
+        - x86_64
+      Events:
+        GetDataStudent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ClassApi
+            Path: /{id}
+            Method: get
+      Environment:
+        Variables:
+          REGION_NAME: "us-east-1"
+          DATA_BASE: "utez_db"
+          SECRET_NAME: "dev/Utez/Mysql"
+
+Outputs:
+  GetDataClassByIdFunctionApiUrl:
+    Description: "API Gateway endpoint URL with path get_class_by_id for Prod stage to Class Model"
+    Value: !Sub "https://${ClassApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/{id}"
+  GetDataClassByIdFunctionArn:
+    Description: "Get data Class By ID Lambda Function ARN"
+    Value: !GetAtt GetDataClassByIdFunction.Arn
+  LambdaExecutionRoleArn:
+    Description: "Lambda Execution Role ARN"
+    Value: !GetAtt LambdaExecutionRole.Arn
